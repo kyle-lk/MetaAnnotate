@@ -73,8 +73,10 @@ software to be in the path:
 +--------------------+-------------------+------------------------------------------------+
 |*Program*           |*Version*          |*Purpose*                                       |
 +--------------------+-------------------+------------------------------------------------+
-|                    |                   |                                                |
+| Prodigal           | 2.6.3             | Detect ORFs                                    |
 +--------------------+-------------------+------------------------------------------------+
+| eggnog-mapper      | 1.0.3             | Functional annotation of ORFs                  |  
++-----------------------------------------------------------------------------------------+
 
 Pipeline output
 ===============
@@ -95,6 +97,7 @@ Code
 from ruffus import *
 import os
 import sys
+import subprocess
 
 ###################################################
 ###################################################
@@ -132,16 +135,56 @@ def checkEnabled():
 ####################################################
 # Find ORFs using prodigal
 ####################################################
-#first make an index for the rRNA reference files
 @follows(mkdir("orfs.dir"))
-@transform(
-)
+@transform(SEQUENCEFILES,SEQUENCEFILES_REGEX,r"orfs.dir/\1.orf_peptides")
 def detectOrfs(infile,outfile):
+    statementlist=[]
+    #set job memory and threads
+    job_memory = str(PARAMS["Prodigal_memory"])+"G"
+    job_threads = PARAMS["Prodigal_threads"]
     #command to generate index files
-    statement = ""
+    seqdat = PipelineMetaAssemblyKit.SequencingData(infile)
+    #ensure input is FASTA
+    if seqdat.paired == True:
+        print("Prodigal requires single/merged (i.e. not paired-end) reads for ORF detection.")
+    else:
+        if seqdat.fileformat == "fastq":
+            statementlist.append("reformat.sh in={} out={}".format(infile,"orfs.dir/"+seqdat.cleanname+".fa"))
+            infile = "orfs.dir/"+seqdat.cleanname+".fa"
+        #generate the call to prodigal
+        statementlist.append(PipelineMetaAnnotate.runProdigal(infile,outfile,PARAMS))
+        #remove the temp FASTA if created
+        if seqdat.fileformat == "fastq":
+            statementlist.append("rm {}".format("orfs.dir/"+seqdat.cleanname+".fa"))
+        statement = " && ".join(statementlist)
+        P.run()
+
+####################################################
+# Functional annotation of ORFs using eggnog-mapper
+####################################################
+@follows(detectOrfs)
+@follows(mkdir("functional_annotations.dir"))
+@transform(detectOrfs,regex(r"orfs.dir/(\S+).orf_peptides"),r"functional_annotations.dir/\1.emapper.annotations")
+def functionalAnnot(infile,outfile):
+    #set memory and threads from params
+    job_memory = str(PARAMS["Eggnogmapper_memory"])+"G"
+    job_threads = PARAMS["Eggnogmapper_threads"]
+    #generate call to eggnog-mapper
+    statement = PipelineMetaAnnotate.runEggmap(infile,outfile.rstrip(".emapper.annotations"),PARAMS)
+    P.run()
+
+##################################################
+# Taxonomic annotation of ORFs using DIAMOND
+#################################################
+@follows(functionalAnnot)
+@follows(mkdir("taxonomic_annotations.dir"))
+@transform(detectOrfs,regex(r"orfs.dir/(\S+).orf_peptides"),r"taxonomic_annotations.dir/\1.diamond.annotatations")
+def taxonomicAnnot(infile,outfile):
+    print(infile,outfile)
     pass
 
-@follows(detectOrfs)
+
+@follows(taxonomicAnnot)
 def full():
     pass
     
