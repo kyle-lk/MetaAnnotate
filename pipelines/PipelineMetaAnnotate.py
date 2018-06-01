@@ -154,3 +154,39 @@ def runDiamond(infile,outfile,params):
     return(" ".join(dcall))
     
 
+'''
+function to build call to blast2lca
+'''
+
+def runBlast2Lca(infile,outfile,params):
+    #input, input format, output
+    bcall = ["blast2lca -i {} -f {} -o {}".format(infile,params["Blast2lca_informat"],outfile)]
+    #taxonomy lca options
+    if params["Blast2lca_sr"] != "false":
+        bcall.append("-sr")
+    if params["Blast2lca_oro"] != "false":
+        bcall.append("-oro")
+    if params["Blast2lca_tid"] != "false":
+        bcall.append("-tid")
+    bcall.append("-ms {}".format(params["Blast2lca_ms"]))
+    bcall.append("-me {}".format(params["Blast2lca_me"]))
+    bcall.append("-top {}".format(params["Blast2lca_top"]))
+    bcall.append("-mid {}".format(params["Blast2lca_mid"]))
+    if params["Blast2lca_tn"] != "false":
+        bcall.append("-tn")
+    bcall.append("-a2t {}".format(params["Blast2lca_a2t"]))
+    #add kegg options if true
+    if params["Blast2lca_k"] != "false":
+        bcall.append("-k -kr {} -a2kegg {}".format(params["Blast2lca_kr"],params["Blast2lca_a2kegg"]))
+        if params["Blast2lca_ktp"] != "false":
+            bcall.append("+ktp")
+        #set out file for kegg
+        kegout = os.path.basename(outfile).replace(".taxonomic.annotations",".megankegg.annotations")
+        kegout = "functional_annotations.dir/"+kegout
+        bcall.append("-ko {}".format(kegout))
+    #other options
+    if params["Blast2lca_fwa"] != "false":
+        bcall.append("-fwa")
+    if params["Blast2lca_v"] != "false":
+        bcall.append("-v")
+    return(" ".join(bcall))

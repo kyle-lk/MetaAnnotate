@@ -187,15 +187,19 @@ def taxonomicAlign(infile,outfile):
     statement = PipelineMetaAnnotate.runDiamond(infile,outfile,PARAMS)
     P.run()
 
-#########################################################################
-# Get taxanomic annotation from DIAMOND alignment using MEGAN blast2lca
-#########################################################################/
+########################################################################################################
+# Get taxanomic annotation (and optionally kegg functions) from DIAMOND alignment using MEGAN blast2lca
+########################################################################################################
 @follows(taxonomicAlign)
 @transform(taxonomicAlign,regex(r"taxonomic_annotations.dir/(\S+).daa"),r"taxonomic_annotations.dir/\1.taxonomic.annotations")
-def taxonomicAnnot(infile,outfile):
-    print(infile,outfile)
+def meganAnnot(infile,outfile):
+    job_memory = str(PARAMS["Blast2lca_memory"])+"G"
+    job_threads = PARAMS["Blast2lca_threads"]
+    #generate call to blast2lca
+    statement = PipelineMetaAnnotate.runBlast2Lca(infile,outfile,PARAMS)
+    P.run()
 
-@follows(taxonomicAnnot)
+@follows(meganAnnot)
 def full():
     pass
     
