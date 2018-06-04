@@ -1,0 +1,145 @@
+---
+title: "Metagenomic ORF Detection and Annotation"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache = FALSE)
+options(scipen=999)
+cpal=4
+```
+
+## ORF detection
+
+```{r, echo=FALSE}
+#sfile=read.table(commandArgs(trailingOnly=T)[1],sep="\t",header=T)
+sfile=read.table("../testfiles/report.dir/orf_tabular.tsv",sep="\t",header=T)
+norfs=nrow(sfile)
+nconts=length(unique(sfile$Contig))
+orflen = format(round(mean(sfile$Size)),big.mark=",")
+orflensd = format(round(sd(sfile$Size)),big.mark=",")
+
+orfspercont=data.frame(table(sfile$Contig))
+meanopc=round(mean(orfspercont$Freq))
+sdopc=round(sd(orfspercont$Freq))
+
+```
+
+A total of **`r norfs`** ORFs were detected by running Prodigal on **`r nconts`** input contigs.
+
+There was a mean of **`r meanopc` $\pm$ `r sdopc`** ORFs per contig.
+
+```{r, echo=FALSE}
+library(ggplot2)
+library(RColorBrewer)
+orfspercontplot = ggplot(orfspercont,aes(Freq))+geom_histogram(bins = 50,fill=brewer.pal(3,"Accent")[1])+theme_classic()+ylab("Count")+xlab("No. Contigs per ORF")+guides(fill=FALSE)
+plot(orfspercontplot)
+```
+
+
+ORFs had a mean length of **`r orflen` $\pm$ `r orflensd`** (Mean$\pm$SD).
+
+```{r, echo=FALSE}
+library(ggplot2)
+library(RColorBrewer)
+orflenhist = ggplot(sfile,aes(Size))+geom_histogram(bins = 50,fill=brewer.pal(3,"Accent")[2])+theme_classic()+ylab("Count")+xlab("Contig Size")+guides(fill=FALSE)
+plot(orflenhist)
+```
+ 
+## Functional Annotation
+ 
+```{r, echo=FALSE}
+noannot=length(which(is.na((sfile$No_GO_Terms))))
+perannot=round((1-(noannot/nrow(sfile)))*100)
+meango = format(mean(sfile$No_GO_Terms,na.rm=T),digits = 3)
+meankeg = format(mean(sfile$No_KEGG_KOs,na.rm=T),digits = 3)
+meanogs = format(mean(sfile$No_OGs,na.rm=T),digits = 3)
+meancogs = format(mean(sfile$No_COG_Cats,na.rm=T),digits=3)
+
+
+sdgo = format(sd(sfile$No_GO_Terms,na.rm=T),digits = 3)
+sdkeg = format(sd(sfile$No_KEGG_KOs,na.rm=T),digits = 3)
+sdogs = format(sd(sfile$No_OGs,na.rm=T),digits = 3)
+sdcogs = format(sd(sfile$No_COG_Cats,na.rm=T),digits=3)
+
+pergo=round((length(which(sfile$No_GO_Terms>0))/nrow(sfile))*100)
+perko=round((length(which(sfile$No_KEGG_KOs>0))/nrow(sfile))*100)
+perogs=round((length(which(sfile$No_OGs>0))/nrow(sfile))*100)
+percogs=round((length(which(sfile$No_COG_Cats>0))/nrow(sfile))*100)
+```
+
+**`r perannot`%** of ORFs were assigned at least one functional annotation using EggNog-Mapper.
+
+```{r, echo=FALSE}
+library(knitr)
+formed=data.frame(cbind(c(meango,meankeg,meanogs,meancogs),c(sdgo,sdkeg,sdogs,sdcogs),c(pergo,perko,perogs,percogs)))
+rownames(formed)=c("GO Terms","KEGG KOs","EggNOG OGs","COG Categories")
+colnames(formed)=c("Mean Number per ORF","SD Number per ORF","Percent ORFs with at Least One")
+kable(formed,caption="Functional annotation summaries per annotation type.")
+
+```
+
+## Taxonomic Annotation
+
+```{r, echo=FALSE}
+nospec=which(is.na(sfile$species))
+taxper=round(100-((length(nospec)/nrow(sfile))*100))
+```
+ 
+ **`r taxper`%** of ORFs were assigned taxonomy at some level using DIAMOND and the LCA algorithm in MEGAN.
+ 
+ The following plots use a looping colour pallete. Cases where the same color occurs multiple times within the same bar represent distinct taxa.
+ 
+ **Distribution of taxa across all ORFs**
+ 
+```{r, echo=FALSE,message=FALSE,warning=FALSE}
+justtax=sfile[-nospec,]
+taxsplit=strsplit(as.character(justtax$species),"|",fixed=TRUE)
+taxsplit=data.frame(matrix(unlist(taxsplit),nrow=nrow(justtax),byrow=T))
+taxsplit=cbind(as.character(justtax$ORF),taxsplit)
+colnames(taxsplit)=c("ORF","Domain","Phyla","Class","Order","Family","Genus","Species")
+
+library(reshape2)
+library(cowplot)
+taxdat=melt(taxsplit, id="ORF")
+cols=rep(brewer.pal(12,"Set3"),100)
+plotlayout=list(geom_bar(),coord_flip(),theme_classic(),guides(fill=FALSE),scale_fill_manual(values=c(cols)),
+                theme(axis.text.y =element_blank(),axis.ticks.y=element_blank(),axis.line.y =element_blank(),axis.title.y=element_text(size=8)))
+dp = ggplot(taxdat[which(taxdat$variable=="Domain"),],aes(x=1,fill=value))+plotlayout+xlab("Domain")+ylab("")
+pp = ggplot(taxdat[which(taxdat$variable=="Phyla"),],aes(x=1,fill=value))+plotlayout+xlab("Phyla")+ylab("")
+cp = ggplot(taxdat[which(taxdat$variable=="Class"),],aes(x=1,fill=value))+plotlayout+xlab("Class")+ylab("")
+op = ggplot(taxdat[which(taxdat$variable=="Order"),],aes(x=1,fill=value))+plotlayout+xlab("Order")+ylab("")
+fp = ggplot(taxdat[which(taxdat$variable=="Family"),],aes(x=1,fill=value))+plotlayout+xlab("Family")+ylab("")
+gp = ggplot(taxdat[which(taxdat$variable=="Genus"),],aes(x=1,fill=value))+plotlayout+xlab("Genus")+ylab("")
+sp = ggplot(taxdat[which(taxdat$variable=="Species"),],aes(x=1,fill=value))+plotlayout+xlab("Species")+ylab("ORF Count")
+
+plot_grid(dp,pp,cp,op,fp,gp,sp,nrow=7)
+  
+```
+
+  **Distribution of taxa per contig**
+
+```{r echo=FALSE}
+tb=table(sfile$Contig)
+sord=sfile
+sord$Contig=factor(sord$Contig, levels = names(tb[order(tb, decreasing = TRUE)]))
+sord=sord[-which(is.na(sord$species)),]
+plotlayoutcont=list(geom_bar(),coord_flip(),theme_classic(),guides(fill=FALSE),scale_fill_manual(values=c(cols)),
+                theme(axis.text.y =element_blank(),axis.ticks.y=element_blank(),axis.line.y =element_blank(),axis.title.y=element_text(size=12)))
+spec=ggplot(sord,aes(x=Contig,fill=species))+geom_bar()+guides(fill=FALSE)+plotlayoutcont+ylab("No ORFs")+ggtitle("Species Assignments")
+genc=ggplot(sord,aes(x=Contig,fill=genus))+geom_bar()+guides(fill=FALSE)+plotlayoutcont+ylab("No ORFs")+ggtitle("Genus Assignments")
+famc=ggplot(sord,aes(x=Contig,fill=family))+geom_bar()+guides(fill=FALSE)+plotlayoutcont+ylab("No ORFs")+ggtitle("Family Assignments")
+ordc=ggplot(sord,aes(x=Contig,fill=order))+geom_bar()+guides(fill=FALSE)+plotlayoutcont+ylab("No ORFs")+ggtitle("Order Assignments")
+clasc=ggplot(sord,aes(x=Contig,fill=class))+geom_bar()+guides(fill=FALSE)+plotlayoutcont+ylab("No ORFs")+ggtitle("Class Assignments")
+phyc=ggplot(sord,aes(x=Contig,fill=phylum))+geom_bar()+guides(fill=FALSE)+plotlayoutcont+ylab("No ORFs")+ggtitle("Phyla Assignments")
+domc=ggplot(sord,aes(x=Contig,fill=domain))+geom_bar()+guides(fill=FALSE)+plotlayoutcont+ylab("No ORFs")+ggtitle("Domain Assignments")
+
+plot(spec)
+plot(genc)
+plot(famc)
+plot(ordc)
+plot(clasc)
+plot(phyc)
+plot(domc)
+
+```

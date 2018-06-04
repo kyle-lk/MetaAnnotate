@@ -170,11 +170,13 @@ def functionalAnnot(infile,outfile):
     job_memory = str(PARAMS["Eggnogmapper_memory"])+"G"
     job_threads = PARAMS["Eggnogmapper_threads"]
     #generate call to eggnog-mapper
-    statement = PipelineMetaAnnotate.runEggmap(infile,outfile.rstrip(".emapper.annotations"),PARAMS)
+    #requires older version of diamond to use the eggnog mapper databases
+    statement = "module load bio/diamond/0.8.22 && "
+    statement += PipelineMetaAnnotate.runEggmap(infile,outfile.replace(".emapper.annotations",""),PARAMS)
     P.run()
 
 ##################################################
-# Taxonomic annotation of ORFs using DIAMOND
+# Taxonomic alignment of ORFs using DIAMOND
 #################################################
 @follows(functionalAnnot)
 @follows(mkdir("taxonomic_annotations.dir"))
@@ -199,9 +201,36 @@ def meganAnnot(infile,outfile):
     statement = PipelineMetaAnnotate.runBlast2Lca(infile,outfile,PARAMS)
     P.run()
 
+
+################################################
+# Generate GTF summarising ORFs and annotations
+################################################
 @follows(meganAnnot)
+@follows(mkdir("annotated_orfs.dir"))
+@merge([detectOrfs,functionalAnnot,meganAnnot],"annotated_orfs.dir/combined_orf_annotations.gtf")
+def mergeAnnotations(infiles,outfile):
+    statement = "python {}scripts/makeGtf.py --orfs {} --functions {} --taxonomy {} --output {}".format(
+        os.path.dirname(__file__).rstrip("pipelines"), infiles[0], infiles[1], infiles[2], outfile
+    )
+    P.run()
+
+@follows(mergeAnnotations)
 def full():
     pass
+
+
+###################################################
+# Summarise annotations
+###################################################
+@follows(mergeAnnotations)
+@follows(mkdir("report.dir"))
+def build_report():
+    statement = "python {}scripts/annotationSummaryTable.py --gtf {} --output {}".format(os.path.dirname(__file__).rstrip("pipelines"),
+                                                                                         "annotated_orfs.dir/combined_orf_annotations.gtf",
+                                                                                         "report.dir/orf_tabular.tsv")
+    P.run()
+
+
     
 if __name__ == "__main__":
     if sys.argv[1] == "plot":
