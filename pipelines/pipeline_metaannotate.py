@@ -76,7 +76,13 @@ software to be in the path:
 | Prodigal           | 2.6.3             | Detect ORFs                                    |
 +--------------------+-------------------+------------------------------------------------+
 | eggnog-mapper      | 1.0.3             | Functional annotation of ORFs                  |  
-+-----------------------------------------------------------------------------------------+
++--------------------+-------------------+------------------------------------------------+
+| DIAMOND            | 0.9.22            | Alignment of ORFs to NCBI database             |
++--------------------+-------------------+------------------------------------------------+
+| MEGAN CE           | 6.11.6            | Taxonomic annotation from DIAMOND alignments   |
++--------------------+-------------------+------------------------------------------------+
+
+Also requires suitable reference databases indexed with the appropriate software versions.
 
 Pipeline output
 ===============
