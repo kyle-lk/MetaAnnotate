@@ -225,9 +225,10 @@ def full():
 @follows(mergeAnnotations)
 @follows(mkdir("report.dir"))
 def build_report():
-    statement = "python {}scripts/annotationSummaryTable.py --gtf {} --output {}".format(os.path.dirname(__file__).rstrip("pipelines"),
-                                                                                         "annotated_orfs.dir/combined_orf_annotations.gtf",
-                                                                                         "report.dir/orf_tabular.tsv")
+    statementlist = ["python {}scripts/annotationSummaryTable.py --gtf {} --output {}".format(os.path.dirname(__file__).rstrip("pipelines"),"annotated_orfs.dir/combined_orf_annotations.gtf","report.dir/orf_tabular.tsv")]
+    scriptloc = "/".join(os.path.dirname(sys.argv[0]).split("/")[0:-1])+"/scripts/annotation_report.Rmd"
+    statementlist.append('R -e "rmarkdown::render(\'{}\',output_file=\'{}/report.dir/annotation_report.html\')" --args {}/report.dir/orf_tabular.tsv'.format(scriptloc,os.getcwd(),os.getcwd()))
+    statement = " && ".join(statementlist)
     P.run()
 
 
