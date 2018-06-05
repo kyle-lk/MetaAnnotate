@@ -132,11 +132,6 @@ SEQUENCEFILES = ("*.fasta", "*.fasta.gz", "*.fasta.1.gz", "*.fasta.1",
 SEQUENCEFILES_REGEX = regex(
     r"(\S+).(fasta$|fasta.gz|fasta.1.gz|fasta.1|fna$|fna.gz|fna.1.gz|fna.1|fa$|fa.gz|fa.1.gz|fa.1|fastq$|fastq.gz|fastq.1.gz|fastq.1)")
 
-#only run if filtering is turned on in the pipeline.ini
-def checkEnabled():
-    if PARAMS["General_rrna_filter"] != "true" and PARAMS["General_host_filter"] != "true":
-        print("Neither rRNA or host filtering selected in pipeline.ini, at least one must be enabled.")
-        sys.exit()
 
 ####################################################
 # Find ORFs using prodigal
