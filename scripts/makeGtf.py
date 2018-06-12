@@ -38,11 +38,9 @@ for i in orfs:
 orfs.close()
 
 #add functional annotations to orf dictionary
+funheader=["query_name","seed_eggNOG_ortholog","seed_ortholog_evalue","seed_ortholog_score","predicted_gene_name","GO_terms","KEGG_KO","BiGG_Reactions","Annotation_tax_scope","Matching_OGs","best_OG|evalue|score","COG_functional_categories","eggNOG_HMM_model_annotation"]
 for i in funs:
     if i[0] == "#":
-        if re.match("#query_name",i):
-            funheader = i.strip("\n").split("\t")
-        else:
             pass
     else:
         entry = i.strip("\n").split("\t")

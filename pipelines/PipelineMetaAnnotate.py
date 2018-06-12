@@ -32,12 +32,18 @@ def runProdigal(infile,outfile,params):
         pcall.append("-t {}".format(outfile.rstrip("_peptides")+"."+params["Prodigal_t"]))
     return(" ".join(pcall))
 
+'''
+function to build call to eggnog-annotation
+'''
+def runEggmapAnnot(infile,outfile,params):
+    return("python2 {} --annotate_hits_table {} --no_file_comments -o {} --cpu {} --data_dir {}".format(params["Eggnogmapper_eggpath"],infile,outfile,params["Eggnogmapper_threads_annot"],params["Eggnogmapper_eggdata"]))
+
 
 '''
-function to build call to eggnog-mapper
+function to build call to eggnog-mapper seed alignment
 '''
 
-def runEggmap(infile,outfile,params):
+def runEggmapSeed(infile,outfile,params):
     #eggnog-mapper requires python2
     pcall = ["python2 {}".format(params["Eggnogmapper_eggpath"])]
     #input output
@@ -77,8 +83,8 @@ def runEggmap(infile,outfile,params):
             pcall.append("--override")
     if params["Eggnogmapper_no_refine"] != "false":
             pcall.append("--no_refine")
-    if params["Eggnogmapper_no_annot"] != "false":
-            pcall.append("--no_annot")
+    pcall.append("--no_annot")
+    pcall.append("--no_file_comments")
     if params["Eggnogmapper_no_search"] != "false":
             pcall.append("--no_search")
     if params["Eggnogmapper_keep_mapping_files"] != "false":

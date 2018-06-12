@@ -102,7 +102,7 @@ Code
 #load modules
 from ruffus import *
 import os
-import sys
+import sys, re
 import subprocess
 
 ###################################################
@@ -160,20 +160,46 @@ def detectOrfs(infile,outfile):
         statement = " && ".join(statementlist)
         P.run()
 
-####################################################
-# Functional annotation of ORFs using eggnog-mapper
-####################################################
+######################################################################################################################
+# Find seed orthologs of ORFs using eggnog-mapper with chunk splitting
+######################################################################################################################
 @follows(detectOrfs)
 @follows(mkdir("functional_annotations.dir"))
-@transform(detectOrfs,regex(r"orfs.dir/(\S+).orf_peptides"),r"functional_annotations.dir/\1.emapper.annotations")
-def functionalAnnot(infile,outfile):
-    #set memory and threads from params
+@follows(mkdir("functional_annotations.dir/emapper_chunks"))
+@subdivide(detectOrfs,regex(r"orfs.dir/(\S+).orf_peptides"),r"functional_annotations.dir/emapper_chunks/\1.*.chunk",r"functional_annotations.dir/emapper_chunks/\1")
+def splitFasta(infile,outfiles,outfileroot):
+    statement = "python {}/fasta_to_chunks.py --input {} --output_prefix {} --chunk_size {}".format(os.path.dirname(os.path.abspath(__file__)).replace("pipelines","scripts"),infile,os.getcwd()+"/"+outfileroot,PARAMS["Eggnogmapper_chunksize"])
+    P.run()
+
+@follows(splitFasta)
+@transform(splitFasta,regex(r"functional_annotations.dir/emapper_chunks/(\S+).chunk"),r"functional_annotations.dir/emapper_chunks/\1.chunk.emapper.seed_orthologs")
+def functionalAnnotSeed(infile,outfile):
     job_memory = str(PARAMS["Eggnogmapper_memory"])+"G"
     job_threads = PARAMS["Eggnogmapper_threads"]
     #generate call to eggnog-mapper
     #requires older version of diamond to use the eggnog mapper databases
     statement = "module load bio/diamond/0.8.22 && "
-    statement += PipelineMetaAnnotate.runEggmap(infile,outfile.replace(".emapper.annotations",""),PARAMS)
+    statement += PipelineMetaAnnotate.runEggmapSeed(infile,infile,PARAMS)
+    P.run()
+
+###############################################################
+# Functional annotation of the seeds
+###############################################################
+
+@follows(functionalAnnotSeed)
+@transform(detectOrfs,regex(r"orfs.dir/(\S+).orf_peptides"),r"functional_annotations.dir/\1.emapper.annotations")
+def functionalAnnot(infile,outfile):
+    job_memory = str(PARAMS["Eggnogmapper_memory_annot"])+"G"
+    job_threads = str(PARAMS["Eggnogmapper_threads_annot"])
+    #concatenate the seed ortholog files from the chunks
+    chunks = re.search("orfs.dir/(\S+).orf_peptides",infile).group(1)
+    chunks = "functional_annotations.dir/emapper_chunks/{}*.seed_orthologs".format(chunks)
+    statementlist = ["cat {} >> functional_annotations.dir/cat.seeds".format(chunks)]
+    #get annotation from seeds
+    statementlist.append(PipelineMetaAnnotate.runEggmapAnnot("functional_annotations.dir/cat.seeds",outfile.replace(".emapper.annotations",""),PARAMS))
+    statementlist.append("rm functional_annotations.dir/cat.seeds")
+    statement = " && ".join(statementlist)
+    #run the annotation step
     P.run()
 
 ##################################################
