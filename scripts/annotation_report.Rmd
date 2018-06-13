@@ -94,7 +94,9 @@ taxper=round(100-((length(nospec)/nrow(sfile))*100))
  **Distribution of taxa across all ORFs**
  
 ```{r, echo=FALSE,message=FALSE,warning=FALSE}
-justtax=sfile[-nospec,]
+justtax=sfile
+if(length(nospec)>0){
+justtax=sfile[-nospec,]}
 taxsplit=strsplit(as.character(justtax$species),"|",fixed=TRUE)
 taxsplit=data.frame(matrix(unlist(taxsplit),nrow=nrow(justtax),byrow=T))
 taxsplit=cbind(as.character(justtax$ORF),taxsplit)

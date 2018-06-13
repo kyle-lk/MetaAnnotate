@@ -41,12 +41,12 @@ for i in gtf:
         species = "NA"
     if "GO_terms" in fundic:
         GOcount = str(fundic["GO_terms"].count("GO"))
-        KEGGcount = str(fundic["KEGG_KOs"].count("K"))
-        EGGcount = str(fundic["OGs"].count("@"))
-        if fundic["COG_cat"] == '""':
+        KEGGcount = str(fundic["KEGG_KO"].count("K"))
+        EGGcount = str(fundic["Matching_OGs"].count("@"))
+        if fundic["COG_functional_categories"] == '""':
             COGcount=str(0)
         else:
-            COGcount=str(1+fundic["COG_cat"].count(","))
+            COGcount=str(1+fundic["COG_functional_categories"].count(","))
     else:
         GOcount = "NA"
         KEGGcount = "NA"
