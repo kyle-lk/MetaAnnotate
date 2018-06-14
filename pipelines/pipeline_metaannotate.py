@@ -236,6 +236,7 @@ def meganAnnot(infile,outfile):
 @follows(mkdir("annotated_orfs.dir"))
 @merge([detectOrfs,functionalAnnot,meganAnnot],"annotated_orfs.dir/combined_orf_annotations.gtf")
 def mergeAnnotations(infiles,outfile):
+    job_memory = str(PARAMS["Merge_memory"])+"G"
     statement = "python {}scripts/makeGtf.py --orfs {} --functions {} --taxonomy {} --output {}".format(
         os.path.dirname(__file__).rstrip("pipelines"), infiles[0], infiles[1], infiles[2], outfile
     )
@@ -252,6 +253,7 @@ def full():
 @follows(mergeAnnotations)
 @follows(mkdir("report.dir"))
 def build_report():
+    job_memory = str(PARAMS["Merge_memory"])+"G"
     statementlist = ["python {}scripts/annotationSummaryTable.py --gtf {} --output {}".format(os.path.dirname(__file__).rstrip("pipelines"),"annotated_orfs.dir/combined_orf_annotations.gtf","report.dir/orf_tabular.tsv")]
     scriptloc = "/".join(os.path.dirname(sys.argv[0]).split("/")[0:-1])+"/scripts/annotation_report.Rmd"
     statementlist.append('R -e "rmarkdown::render(\'{}\',output_file=\'{}/report.dir/annotation_report.html\')" --args {}/report.dir/orf_tabular.tsv'.format(scriptloc,os.getcwd(),os.getcwd()))

@@ -20,8 +20,8 @@ for i in gtf:
     vals = row[8].strip("\n").split(";")
     fundic = {}
     for j in vals[0:-1]:
-        pair = j.split()
-        fundic[pair[0]]=" ".join(pair[1:])
+        reg = re.search('^(\S+) \"(.*)\"$',j)
+        fundic[reg.group(1)]=reg.group(2)
     orf = fundic["gene_id"]
     if "phylum" in fundic:
         domain = fundic["domain"]
