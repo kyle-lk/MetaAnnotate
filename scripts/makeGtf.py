@@ -98,7 +98,7 @@ for i in orfdic:
     outfile.write("\t".join(info)+'\tgene_id "{}";'.format(i))
     for j in annotlist:
         if j in orfannotdic[i]:
-            outfile.write('{} "{}";'.format(j.replace(" ","_"),orfannotdic[i][j]))
+            outfile.write('{} "{}";'.format(j.replace(" ","_"),orfannotdic[i][j].replace(";","_")))
     outfile.write("\n")
 
 outfile.close()

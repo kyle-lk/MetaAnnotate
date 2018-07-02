@@ -185,23 +185,25 @@ def functionalAnnotSeed(infile,outfile):
 ###############################################################
 # Functional annotation of the seeds
 ###############################################################
-
 @follows(functionalAnnotSeed)
-@transform(detectOrfs,regex(r"orfs.dir/(\S+).orf_peptides"),r"functional_annotations.dir/\1.emapper.annotations")
-def functionalAnnot(infile,outfile):
+@transform(functionalAnnotSeed,regex(r"functional_annotations.dir/emapper_chunks/(\S+).emapper.seed_orthologs"),r"functional_annotations.dir/emapper_chunks/\1.emapper.annotations")
+def functionalAnnotChunks(infile,outfile):
     job_memory = str(PARAMS["Eggnogmapper_memory_annot"])+"G"
     job_threads = str(PARAMS["Eggnogmapper_threads_annot"])
-    #concatenate the seed ortholog files from the chunks
-    chunks = re.search("orfs.dir/(\S+).orf_peptides",infile).group(1)
-    chunks = "functional_annotations.dir/emapper_chunks/{}*.seed_orthologs".format(chunks)
-    statementlist = ["cat {} >> functional_annotations.dir/cat.seeds".format(chunks)]
     #get annotation from seeds
-    statementlist.append(PipelineMetaAnnotate.runEggmapAnnot("functional_annotations.dir/cat.seeds",outfile.replace(".emapper.annotations",""),PARAMS))
-    statementlist.append("rm functional_annotations.dir/cat.seeds")
-    statement = " && ".join(statementlist)
+    statement = PipelineMetaAnnotate.runEggmapAnnot(infile,outfile.replace(".emapper.annotations",""),PARAMS)
     #run the annotation step
     P.run()
 
+###################################################
+# Merge the functional annotations
+##################################################
+@follows(functionalAnnotChunks)
+@collate(functionalAnnotChunks,regex(r"functional_annotations\.dir/emapper_chunks/(\S+)\.[0-9]+\.chunk\.emapper\.annotations"),r"functional_annotations.dir/\1.functional.annotations")
+def functionalAnnot(infiles,outfile):
+    statement = "cat {} >> {}".format(" ".join(infiles),outfile)
+    P.run()
+    
 ##################################################
 # Taxonomic alignment of ORFs using DIAMOND
 #################################################
@@ -257,6 +259,7 @@ def build_report():
     statementlist = ["python {}scripts/annotationSummaryTable.py --gtf {} --output {}".format(os.path.dirname(__file__).rstrip("pipelines"),"annotated_orfs.dir/combined_orf_annotations.gtf","report.dir/orf_tabular.tsv")]
     scriptloc = "/".join(os.path.dirname(sys.argv[0]).split("/")[0:-1])+"/scripts/annotation_report.Rmd"
     statementlist.append('R -e "rmarkdown::render(\'{}\',output_file=\'{}/report.dir/annotation_report.html\')" --args {}/report.dir/orf_tabular.tsv'.format(scriptloc,os.getcwd(),os.getcwd()))
+    #statementlist.append("rm report.dir/orf_tabular.tsv")
     statement = " && ".join(statementlist)
     P.run()
 
