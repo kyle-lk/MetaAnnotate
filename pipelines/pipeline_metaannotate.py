@@ -252,15 +252,18 @@ def full():
 ###################################################
 # Summarise annotations
 ###################################################
-@follows(mergeAnnotations)
 @follows(mkdir("report.dir"))
+@originate("report.dir/gtf_summary.tsv")
+def summariseGTF(outfile):
+    job_memory = str(PARAMS["Merge_memory"])+"G"
+    statement = "python {}scripts/annotationSummaryTable.py --gtf {} --output {}".format(os.path.dirname(__file__).rstrip("pipelines"),"annotated_orfs.dir/combined_orf_annotations.gtf",outfile)
+    P.run()
+
+@follows(summariseGTF)
 def build_report():
     job_memory = str(PARAMS["Merge_memory"])+"G"
-    statementlist = ["python {}scripts/annotationSummaryTable.py --gtf {} --output {}".format(os.path.dirname(__file__).rstrip("pipelines"),"annotated_orfs.dir/combined_orf_annotations.gtf","report.dir/orf_tabular.tsv")]
     scriptloc = "/".join(os.path.dirname(sys.argv[0]).split("/")[0:-1])+"/scripts/annotation_report.Rmd"
-    statementlist.append('R -e "rmarkdown::render(\'{}\',output_file=\'{}/report.dir/annotation_report.html\')" --args {}/report.dir/orf_tabular.tsv'.format(scriptloc,os.getcwd(),os.getcwd()))
-    #statementlist.append("rm report.dir/orf_tabular.tsv")
-    statement = " && ".join(statementlist)
+    statement = 'R -e "rmarkdown::render(\'{}\',output_file=\'{}/report.dir/annotation_report.html\')" --args {}/report.dir/gtf_summary.tsv'.format(scriptloc,os.getcwd(),os.getcwd())
     P.run()
 
 

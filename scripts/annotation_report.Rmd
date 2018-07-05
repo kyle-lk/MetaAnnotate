@@ -6,67 +6,69 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(cache = FALSE)
+knitr::opts_chunk$set(cache = TRUE)
 options(scipen=999)
 cpal=4
+
+library(data.table)
+
+#read in the gtf summary table
+gtf=fread(commandArgs(trailingOnly=T)[1],header = T,sep="\t")
+
 ```
 
-## ORF detection
+## ORF Detection
 
 ```{r, echo=FALSE}
-sfile=read.table(commandArgs(trailingOnly=T)[1],sep="\t",header=T)
-norfs=nrow(sfile)
-nconts=length(unique(sfile$Contig))
-orflen = format(round(mean(sfile$Size)),big.mark=",")
-orflensd = format(round(sd(sfile$Size)),big.mark=",")
 
-orfspercont=data.frame(table(sfile$Contig))
-meanopc=round(mean(orfspercont$Freq))
-sdopc=round(sd(orfspercont$Freq))
+nocontigs=length(unique(gtf$Contig))
+noorfs=length(unique(gtf$ORF))
+orfspercon=table(gtf$Contig)
 
 ```
 
-A total of **`r norfs`** ORFs were detected by running Prodigal on **`r nconts`** input contigs.
+A total of **`r noorfs`** ORFs were detected across **`r nocontigs`** contigs.
 
-There was a mean of **`r meanopc` $\pm$ `r sdopc`** ORFs per contig.
-
-```{r, echo=FALSE}
-library(ggplot2)
-library(RColorBrewer)
-orfspercontplot = ggplot(orfspercont,aes(Freq))+geom_histogram(bins = 50,fill=brewer.pal(3,"Accent")[1])+theme_classic()+ylab("Count")+xlab("No. Contigs per ORF")+guides(fill=FALSE)
-plot(orfspercontplot)
-```
-
-
-ORFs had a mean length of **`r orflen` $\pm$ `r orflensd`** (Mean$\pm$SD).
+There were **`r round(mean(orfspercon))` $\pm$ `r round(sd(orfspercon))`** (Mean $\pm$ SD) ORFs per contig (Range `r min(orfspercon)` - `r max(orfspercon)`).
 
 ```{r, echo=FALSE}
 library(ggplot2)
 library(RColorBrewer)
-orflenhist = ggplot(sfile,aes(Size))+geom_histogram(bins = 50,fill=brewer.pal(3,"Accent")[2])+theme_classic()+ylab("Count")+xlab("Contig Size")+guides(fill=FALSE)
+orfsperconplot = ggplot(data.frame(orfspercon),aes(x=Freq))+geom_histogram(bins = 50,fill=brewer.pal(3,"Accent")[1])+theme_classic()+ylab("log10(No. Contigs)")+xlab("No. ORFs")+guides(fill=FALSE)+scale_y_log10()
+plot(orfsperconplot)
+```
+
+ORFs had a length of **`r round(mean(gtf$Size))` $\pm$ `r round(sd(gtf$Size)) `bp** (Mean$\pm$SD) (Range `r min(gtf$Size)` - `r max(gtf$Size)`).
+
+```{r, echo=FALSE}
+orflenhist = ggplot(gtf,aes(Size))+geom_histogram(bins = 50,fill=brewer.pal(3,"Accent")[2])+theme_classic()+ylab("log10(ORF Count)")+xlab("ORF Size")+guides(fill=FALSE)+scale_y_log10()
 plot(orflenhist)
 ```
- 
+
+## Taxonomic Annotation
+
+Taxonomy was assigned at some level for **`r round(100-(length(which(is.na(gtf$Taxa)))/nrow(gtf))*100)`%** of ORFs.
+
 ## Functional Annotation
  
 ```{r, echo=FALSE}
-noannot=length(which(is.na((sfile$No_GO_Terms))))
-perannot=round((1-(noannot/nrow(sfile)))*100)
-meango = format(mean(sfile$No_GO_Terms,na.rm=T),digits = 3)
-meankeg = format(mean(sfile$No_KEGG_KOs,na.rm=T),digits = 3)
-meanogs = format(mean(sfile$No_OGs,na.rm=T),digits = 3)
-meancogs = format(mean(sfile$No_COG_Cats,na.rm=T),digits=3)
+noannot=length(which(is.na((gtf$No_GO_Terms))))
+perannot=round((1-(noannot/nrow(gtf)))*100)
+meango = format(mean(gtf$No_GO_Terms,na.rm=T),digits = 3)
+meankeg = format(mean(gtf$No_KEGG_KOs,na.rm=T),digits = 3)
+meanogs = format(mean(gtf$No_OGs,na.rm=T),digits = 3)
+meancogs = format(mean(gtf$No_COG_Cats,na.rm=T),digits=3)
 
 
-sdgo = format(sd(sfile$No_GO_Terms,na.rm=T),digits = 3)
-sdkeg = format(sd(sfile$No_KEGG_KOs,na.rm=T),digits = 3)
-sdogs = format(sd(sfile$No_OGs,na.rm=T),digits = 3)
-sdcogs = format(sd(sfile$No_COG_Cats,na.rm=T),digits=3)
+sdgo = format(sd(gtf$No_GO_Terms,na.rm=T),digits = 3)
+sdkeg = format(sd(gtf$No_KEGG_KOs,na.rm=T),digits = 3)
+sdogs = format(sd(gtf$No_OGs,na.rm=T),digits = 3)
+sdcogs = format(sd(gtf$No_COG_Cats,na.rm=T),digits=3)
 
-pergo=round((length(which(sfile$No_GO_Terms>0))/nrow(sfile))*100)
-perko=round((length(which(sfile$No_KEGG_KOs>0))/nrow(sfile))*100)
-perogs=round((length(which(sfile$No_OGs>0))/nrow(sfile))*100)
-percogs=round((length(which(sfile$No_COG_Cats>0))/nrow(sfile))*100)
+pergo=round((length(which(gtf$No_GO_Terms>0))/nrow(gtf))*100)
+perko=round((length(which(gtf$No_KEGG_KOs>0))/nrow(gtf))*100)
+perogs=round((length(which(gtf$No_OGs>0))/nrow(gtf))*100)
+percogs=round((length(which(gtf$No_COG_Cats>0))/nrow(gtf))*100)
 ```
 
 **`r perannot`%** of ORFs were assigned at least one functional annotation using EggNog-Mapper.
@@ -79,145 +81,3 @@ colnames(formed)=c("Mean Number per ORF","SD Number per ORF","Percent ORFs with 
 kable(formed,caption="Functional annotation summaries per annotation type.")
 
 ```
-
-## Taxonomic Annotation
-
-```{r, echo=FALSE}
-nospec=which(is.na(sfile$species))
-taxper=round(100-((length(nospec)/nrow(sfile))*100))
-```
- 
- **`r taxper`%** of ORFs were assigned taxonomy at some level using DIAMOND against the NCBI nr database and the LCA algorithm in MEGAN.
- 
- The following plots use a looping colour pallete. Cases where the same colour occurs multiple times within a bar represent distinct taxa.
- 
- **Distribution of taxa across all ORFs**
- 
-```{r, echo=FALSE,message=FALSE,warning=FALSE}
-justtax=sfile
-if(length(nospec)>0){
-justtax=sfile[-nospec,]}
-taxsplit=strsplit(as.character(justtax$species),"|",fixed=TRUE)
-taxsplit=data.frame(matrix(unlist(taxsplit),nrow=nrow(justtax),byrow=T))
-taxsplit=cbind(as.character(justtax$ORF),taxsplit)
-colnames(taxsplit)=c("ORF","Domain","Phyla","Class","Order","Family","Genus","Species")
-
-library(reshape2)
-library(cowplot)
-taxdat=melt(taxsplit, id="ORF")
-cols=rep(brewer.pal(12,"Set3"),100)
-plotlayout=list(geom_bar(),coord_flip(),theme_classic(),guides(fill=FALSE),scale_fill_manual(values=c(cols)),
-                theme(axis.text.y =element_blank(),axis.ticks.y=element_blank(),axis.line.y =element_blank(),axis.title.y=element_text(size=8)))
-dp = ggplot(taxdat[which(taxdat$variable=="Domain"),],aes(x=1,fill=value))+plotlayout+xlab("Domain")+ylab("")
-pp = ggplot(taxdat[which(taxdat$variable=="Phyla"),],aes(x=1,fill=value))+plotlayout+xlab("Phyla")+ylab("")
-cp = ggplot(taxdat[which(taxdat$variable=="Class"),],aes(x=1,fill=value))+plotlayout+xlab("Class")+ylab("")
-op = ggplot(taxdat[which(taxdat$variable=="Order"),],aes(x=1,fill=value))+plotlayout+xlab("Order")+ylab("")
-fp = ggplot(taxdat[which(taxdat$variable=="Family"),],aes(x=1,fill=value))+plotlayout+xlab("Family")+ylab("")
-gp = ggplot(taxdat[which(taxdat$variable=="Genus"),],aes(x=1,fill=value))+plotlayout+xlab("Genus")+ylab("")
-sp = ggplot(taxdat[which(taxdat$variable=="Species"),],aes(x=1,fill=value))+plotlayout+xlab("Species")+ylab("ORF Count")
-
-plot_grid(sp,gp,fp,op,cp,pp,dp,nrow=7)
-  
-```
-
-  **Distribution of taxa per contig**
-  
-  Only considering ORFs assigned taxonomy.
-
-```{r echo=FALSE}
-tb=table(sfile$Contig)
-sord=sfile
-sord$Contig=factor(sord$Contig, levels = names(tb[order(tb, decreasing = TRUE)]))
-sord=sord[-which(is.na(sord$species)),]
-plotlayoutcont=list(geom_bar(),coord_flip(),theme_classic(),guides(fill=FALSE),scale_fill_manual(values=c(cols)),
-                theme(axis.text.y =element_blank(),axis.ticks.y=element_blank(),axis.line.y =element_blank(),axis.title.y=element_text(size=12)))
-spec=ggplot(sord,aes(x=Contig,fill=species))+geom_bar()+guides(fill=FALSE)+plotlayoutcont+ylab("No ORFs")
-genc=ggplot(sord,aes(x=Contig,fill=genus))+geom_bar()+guides(fill=FALSE)+plotlayoutcont+ylab("No ORFs")
-famc=ggplot(sord,aes(x=Contig,fill=family))+geom_bar()+guides(fill=FALSE)+plotlayoutcont+ylab("No ORFs")
-ordc=ggplot(sord,aes(x=Contig,fill=order))+geom_bar()+guides(fill=FALSE)+plotlayoutcont+ylab("No ORFs")
-clasc=ggplot(sord,aes(x=Contig,fill=class))+geom_bar()+guides(fill=FALSE)+plotlayoutcont+ylab("No ORFs")
-phyc=ggplot(sord,aes(x=Contig,fill=phylum))+geom_bar()+guides(fill=FALSE)+plotlayoutcont+ylab("No ORFs")
-domc=ggplot(sord,aes(x=Contig,fill=domain))+geom_bar()+guides(fill=FALSE)+plotlayoutcont+ylab("No ORFs")
-
-sptab=table(sord$Contig,sord$species)
-gntab=table(sord$Contig,sord$genus)
-famtab=table(sord$Contig,sord$family)
-ordtab=table(sord$Contig,sord$family)
-clastab=table(sord$Contig,sord$class)
-phytab=table(sord$Contig,sord$phylum)
-domtab=table(sord$Contig,sord$domain)
-
-```
-
-**Species**
-
-Each contig contained a mean of `r format(mean(rowSums(sptab!=0)),digits=2)` different species annotations.
-
-The most common species annotations accounted for a mean of `r format(mean(apply(sptab,1,function(x)(max(x)/sum(x)*100))),digits=2)`% of the ORFs within a contig.
-
-```{r echo=FALSE}
-plot(spec)
-```
-
-**Genus**
-
-Each contig contained a mean of `r format(mean(rowSums(gntab!=0)),digits=2)` different genus annotations.
-
-The most common genus annotations accounted for a mean of `r format(mean(apply(gntab,1,function(x)(max(x)/sum(x)*100))),digits=2)`% of the ORFs within a contig.
-
-```{r echo=FALSE}
-plot(genc)
-```
-
-**Family**
-
-Each contig contained a mean of `r format(mean(rowSums(famtab!=0)),digits=2)` different family annotations.
-
-The most common family annotations accounted for a mean of `r format(mean(apply(famtab,1,function(x)(max(x)/sum(x)*100))),digits=2)`% of the ORFs within a contig.
-
-
-```{r echo=FALSE}
-plot(famc)
-```
-
-**Order**
-
-Each contig contained a mean of `r format(mean(rowSums(ordtab!=0)),digits=2)` different order annotations.
-
-The most common order annotations accounted for a mean of `r format(mean(apply(ordtab,1,function(x)(max(x)/sum(x)*100))),digits=2)`% of the ORFs within a contig.
-
-```{r echo=FALSE}
-plot(ordc)
-```
-
-**Class**
-
-Each contig contained a mean of `r format(mean(rowSums(clastab!=0)),digits=2)` different class annotations.
-
-The most common class annotations accounted for a mean of `r format(mean(apply(clastab,1,function(x)(max(x)/sum(x)*100))),digits=2)`% of the ORFs within a contig.
-
-```{r echo=FALSE}
-plot(clasc)
-```
-
-**Phylum**
-
-Each contig contained a mean of `r format(mean(rowSums(phytab!=0)),digits=2)` different phylum annotations.
-
-The most common phylum annotations accounted for a mean of `r format(mean(apply(phytab,1,function(x)(max(x)/sum(x)*100))),digits=2)`% of the ORFs within a contig.
-
-```{r echo=FALSE}
-plot(phyc)
-```
-
-**Domain**
-
-Each contig contained a mean of `r format(mean(rowSums(domtab!=0)),digits=2)` different domain annotations.
-
-The most common domain annotations accounted for a mean of `r format(mean(apply(domtab,1,function(x)(max(x)/sum(x)*100))),digits=2)`% of the ORFs within a contig.
-
-```{r echo=FALSE}
-plot(domc)
-```
-
-

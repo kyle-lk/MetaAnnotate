@@ -10,7 +10,7 @@ args = parser.parse_args()
 #open the files
 gtf = open(args.gtf,'rU')
 outfile = open(args.outfile,'w')
-outfile.write("ORF\tContig\tSize\tdomain\tphylum\tclass\torder\tfamily\tgenus\tspecies\tNo_GO_Terms\tNo_KEGG_KOs\tNo_OGs\tNo_COG_Cats\n")
+outfile.write("ORF\tContig\tSize\tTaxa\tNo_GO_Terms\tNo_KEGG_KOs\tNo_OGs\tNo_COG_Cats\n")
 
 #go through gtf files and tabulate ORFs
 for i in gtf:
@@ -20,25 +20,13 @@ for i in gtf:
     vals = row[8].strip("\n").split(";")
     fundic = {}
     for j in vals[0:-1]:
-        reg = re.search('^(\S+) \"(.*)\"$',j)
-        fundic[reg.group(1)]=reg.group(2)
+        feat = j.split('"')
+        fundic[feat[0].replace(" ","")]=feat[1]
     orf = fundic["gene_id"]
     if "phylum" in fundic:
-        domain = fundic["domain"]
-        phylum = fundic["phylum"]
-        clas = fundic["class"]
-        order = fundic["order"]
-        family = fundic["family"]
-        genus = fundic["genus"]
-        species = fundic["species"]
+        taxa="1"
     else:
-        domain = "NA"
-        phylum = "NA"
-        clas = "NA"
-        order = "NA"
-        family = "NA"
-        genus = "NA"
-        species = "NA"
+        taxa="NA"
     if "GO_terms" in fundic:
         GOcount = str(fundic["GO_terms"].count("GO"))
         KEGGcount = str(fundic["KEGG_KO"].count("K"))
@@ -52,7 +40,7 @@ for i in gtf:
         KEGGcount = "NA"
         EGGcount = "NA"
         COGcount = "NA"
-    vals = [orf, contig, size, domain, phylum, clas, order, family, genus ,species, GOcount, KEGGcount, EGGcount,COGcount]
+    vals = [orf, contig, size, taxa, GOcount, KEGGcount, EGGcount,COGcount]
     outfile.write("\t".join(vals).replace('"','')+"\n")
 outfile.close()
         
